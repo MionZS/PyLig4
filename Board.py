@@ -19,6 +19,11 @@ def _load_cell_styles(directory: Path = CELLS_DIR) -> Dict[str, Dict[str, str]]:
     """
     Build a mapping of style_name → {'top': str, 'mid': str, 'bottom': str}.
 
+    This function is the engine for making the board's appearance customizable.
+    It aggregates all style definitions from all JSON files in the target
+    directory into a single dictionary, which is then used by the Board class
+    to render itself.
+
     Each JSON file in *directory* may be:
       • a **single-style** file:
             {"top": "...", "mid": "...", "bottom": "..."}
@@ -105,17 +110,19 @@ class Board:
     ) -> None:
         self.rows: int = rows
         self.columns: int = columns
-        self.color: str = color
+        self.color: str = color  # Metadata, not currently used for rendering.
 
         try:
-            self._parts = _STYLE_MAP[style]          # {'top': '...', 'mid': '...', ...}
+            # _parts holds the ASCII/Unicode strings for the chosen cell style.
+            self._parts = _STYLE_MAP[style]
         except KeyError as exc:
             raise ValueError(
                 f"Unknown style '{style}'. "
                 f"Available: {', '.join(sorted(_STYLE_MAP))}"
             ) from exc
 
-        # The logical board (None until you start dropping tokens, etc.)
+        # The logical board is a 2D list (list of lists).
+        # `None` represents an empty cell. It will be filled with piece strings ('X', 'O').
         self.board: List[List[Optional[str]]] = [
             [None for _ in range(columns)] for _ in range(rows)
         ]
@@ -137,7 +144,8 @@ class Board:
 
         center_idx = len(mid_part) // 2
 
-        # Calculate padding for row labels (e.g., "5: ") to align board.
+        # To ensure the board aligns nicely, we calculate the width of the row
+        # labels (e.g., "5: ") and add padding to lines that don't have a label.
         row_label_width = len(str(self.rows - 1))
         row_prefix_padding = " " * (row_label_width + 2)  # e.g., for "5: "
 
@@ -161,8 +169,9 @@ class Board:
             # print()
 
         # --- Column Index Footer ---
-        print()  # Spacer before footer
+        print()  # Add a blank line for spacing before the footer.
         cell_width = len(mid_part)
+        # Center each column index within the width of a single cell.
         col_labels = [str(c).center(cell_width) for c in range(self.columns)]
         print(row_prefix_padding + " ".join(col_labels))
 
@@ -186,15 +195,16 @@ class Board:
             was full or the index was invalid.
         """
         if not 0 <= column < self.columns:
-            return False  # Column index is out of bounds
+            return False  # Column index is out of bounds, drop is invalid.
 
-        # Iterate from the bottom row (e.g., 5) up to the top row (0)
+        # To simulate gravity, we check from the bottom row upwards.
+        # `range(self.rows - 1, -1, -1)` iterates from 5 down to 0 for a 6-row board.
         for r in range(self.rows - 1, -1, -1):
             if self.board[r][column] is None:
                 self.board[r][column] = piece
-                return True
+                return True  # Piece successfully placed.
 
-        return False  # If the loop completes, the column is full
+        return False  # If the loop completes, no empty slot was found.
 
     def check_for_win(self, piece: str) -> bool:
         """
@@ -222,13 +232,20 @@ class Board:
                         if not (0 <= end_r < self.rows and 0 <= end_c < self.columns):
                             continue  # This line won't fit, try next direction
 
-                        # Check the 4 cells (start + 3 more) in the direction
+                        # Check the 4 cells (start + 3 more) in the current direction.
+                        # `all()` is efficient: it stops checking as soon as one
+                        # element is not the piece (short-circuiting).
                         if all(self.board[r + i * dr][c + i * dc] == piece for i in range(4)):
                             return True  # Found a win
 
         return False  # No win found after checking all possibilities
 
-    def cleanse_board(self):
+    def reset_board(self):
+        """
+        Resets the board to its initial empty state.
+
+        This is done by creating a new 2D list filled with `None`.
+        """
         self.board = [
             [None for _ in range(self.columns)] for _ in range(self.rows)
         ]
@@ -237,6 +254,12 @@ class Board:
 # Hot-reload helper – call while program is running to pick up new JSON
 # ──────────────────────────────────────────────────────────────────────
 def reload_styles() -> None:
-    """Re-scan styles/cells/*.json and refresh the shared style map in memory."""
+    """
+    Re-scans styles/cells/*.json and refreshes the shared style map in memory.
+
+    This is a development utility. It allows you to change the cell style JSON
+    files and see the changes in a running application without restarting it,
+    for example by calling this function from a special debug input.
+    """
     global _STYLE_MAP
     _STYLE_MAP = _load_cell_styles()

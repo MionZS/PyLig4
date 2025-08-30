@@ -10,6 +10,10 @@ def _load_piece_styles(directory: Path = PIECES_DIR) -> Dict[str, Dict[str, str]
     """
     Build a mapping of piece_style_name → {'one': str, 'two': str}.
 
+    This function scans a directory for *.json files to load piece styles,
+    allowing player tokens (e.g., 'X' and 'O') to be easily customized.
+    It works just like the cell style loader.
+
     Each JSON file in *directory* may be a single-style file or a
     multi-style bundle, similar to the cell style loader.
 
@@ -82,6 +86,7 @@ class Piece:
         style: str = "default",
     ) -> None:
         try:
+            # Find the requested style definition from the globally loaded map.
             style_def = _PIECE_STYLE_MAP[style]
         except KeyError as exc:
             raise ValueError(
@@ -89,6 +94,7 @@ class Piece:
                 f"Available: {', '.join(sorted(_PIECE_STYLE_MAP))}"
             ) from exc
 
+        # Assign the specific characters for player one and player two.
         self.one: str = style_def["one"]
         self.two: str = style_def["two"]
 
@@ -101,6 +107,12 @@ class Piece:
 # Hot-reload helper – call while program is running to pick up new JSON
 # ──────────────────────────────────────────────────────────────────────
 def reload_piece_styles() -> None:
-    """Re-scan styles/pieces/*.json and refresh the shared style map in memory."""
+    """
+    Re-scans styles/pieces/*.json and refreshes the shared style map in memory.
+
+    This is a development utility. It allows you to change the piece style JSON
+    files and see the changes in a running application without restarting it,
+    for example by calling this function from a special debug input.
+    """
     global _PIECE_STYLE_MAP
     _PIECE_STYLE_MAP = _load_piece_styles()
