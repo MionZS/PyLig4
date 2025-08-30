@@ -228,6 +228,11 @@ class Board:
 
         return False  # No win found after checking all possibilities
 
+    def cleanse_board(self):
+        self.board = [
+            [None for _ in range(self.columns)] for _ in range(self.rows)
+        ]
+
 # ──────────────────────────────────────────────────────────────────────
 # Hot-reload helper – call while program is running to pick up new JSON
 # ──────────────────────────────────────────────────────────────────────
