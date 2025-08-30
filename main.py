@@ -37,7 +37,12 @@ while game_is_on:
     # Attempt to drop the piece using the new Board method.
     if board.drop_piece(choice, current_piece):
         # --- A VICTORY CHECK WOULD GO HERE IN THE FUTURE ---
-        board.check_for_win(current_piece)
+        if board.check_for_win(current_piece):
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print(f"{current_piece} won!")
+            input("enter for next game, ctrl-c to quit")
+            board.print_board()
+
         # If successful, switch to the next player for the next turn.
         if current_player == 1:
             current_player = 2
