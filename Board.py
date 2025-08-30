@@ -125,7 +125,7 @@ class Board:
     # ────────────────────────────────────────────────────────────────
     def print_board(self) -> None:
         """
-        Prints the current board state to the console.
+        Prints the current board state to the console, with row and column indexes.
 
         Each logical row of the board is rendered as three lines of text,
         forming cells from the chosen style. Tokens are placed in the
@@ -135,25 +135,36 @@ class Board:
         mid_part = self._parts["mid"]
         bot_part = self._parts["bottom"]
 
-        # Pre-calculate the center index for token placement. This assumes
-        # the mid_part string has a center character to be replaced.
         center_idx = len(mid_part) // 2
 
-        for logical_row in self.board:
-            # 1. Top line of a row of cells (all identical)
-            print(" ".join(top_part for _ in logical_row))
+        # Calculate padding for row labels (e.g., "5: ") to align board.
+        row_label_width = len(str(self.rows - 1))
+        row_prefix_padding = " " * (row_label_width + 2)  # e.g., for "5: "
 
-            # 2. Middle line, with tokens substituted in.
+        for r, logical_row in enumerate(self.board):
+            # Row label for the middle line, e.g., "0: ", "1: ", ...
+            row_label = f"{r:>{row_label_width}}: "
+
+            # 1. Top line of a row of cells (with padding for row label)
+            print(row_prefix_padding + " ".join(top_part for _ in logical_row))
+
+            # 2. Middle line, with tokens and row label.
             rendered_mids = [
                 mid_part[:center_idx] + (str(c) if c is not None else " ") + mid_part[center_idx + 1:]
                 for c in logical_row
             ]
-            print(" ".join(rendered_mids))
+            print(row_label + " ".join(rendered_mids))
 
-            # 3. Bottom line of a row of cells (all identical)
-            print(" ".join(bot_part for _ in logical_row))
+            # 3. Bottom line of a row of cells (with padding for row label)
+            print(row_prefix_padding + " ".join(bot_part for _ in logical_row))
             # optional spacer line between board rows:
             # print()
+
+        # --- Column Index Footer ---
+        print()  # Spacer before footer
+        cell_width = len(mid_part)
+        col_labels = [str(c).center(cell_width) for c in range(self.columns)]
+        print(row_prefix_padding + " ".join(col_labels))
 
     def drop_piece(self, column: int, piece: str) -> bool:
         """
@@ -185,12 +196,37 @@ class Board:
 
         return False  # If the loop completes, the column is full
 
-    def check_for_win(self, piece: str):
-        for row in range(self.rows):
-            for col in range(self.columns):
-                if self.board[row][col] == piece:
+    def check_for_win(self, piece: str) -> bool:
+        """
+        Checks the entire board for a winning sequence of 4 for the given piece.
 
+        Iterates through each cell. If a cell contains the target piece, it checks
+        for a win starting from that cell in all four primary directions
+        (horizontal, vertical, and both diagonals).
+        """
+        # Directions to check: (row_change, col_change)
+        directions = [
+            (0, 1),  # Horizontal
+            (1, 0),  # Vertical
+            (1, 1),  # Diagonal down-right
+            (1, -1),  # Diagonal down-left
+        ]
 
+        for r in range(self.rows):
+            for c in range(self.columns):
+                # We only need to start a check if the cell contains the piece
+                if self.board[r][c] == piece:
+                    for dr, dc in directions:
+                        # Check if a line of 4 would fit on the board from here
+                        end_r, end_c = r + 3 * dr, c + 3 * dc
+                        if not (0 <= end_r < self.rows and 0 <= end_c < self.columns):
+                            continue  # This line won't fit, try next direction
+
+                        # Check the 4 cells (start + 3 more) in the direction
+                        if all(self.board[r + i * dr][c + i * dc] == piece for i in range(4)):
+                            return True  # Found a win
+
+        return False  # No win found after checking all possibilities
 
 # ──────────────────────────────────────────────────────────────────────
 # Hot-reload helper – call while program is running to pick up new JSON
