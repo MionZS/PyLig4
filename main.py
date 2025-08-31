@@ -40,7 +40,7 @@ while game_is_on:
             print(f"{current_piece} won!")
             board.print_board()
             input("enter for next game, ctrl-c to quit")
-            board.cleanse_board()
+            board.reset_board()
             board.print_board()
 
         # If successful, switch to the next player for the next turn.
